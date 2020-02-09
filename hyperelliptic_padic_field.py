@@ -1732,10 +1732,10 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                 newdiff = self.diff(divisor1, x, y)
                 newbeta = self.diff(divisor2, x, y)
                 newalpha = newfrob - p*newdiff
-            try:
-                newres = newres + [(newalpha*newbeta.integral()).residue().trace()]
-            except AttributeError:
-                newres = newres + [(newalpha*newbeta.integral()).residue()]
+                try:
+                    newres = newres + [(newalpha*newbeta.integral()).residue().trace()]
+                except AttributeError:
+                    newres = newres + [(newalpha*newbeta.integral()).residue()]
             newres = sum(newres)
             return oldres + newres
 
