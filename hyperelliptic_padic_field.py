@@ -1584,7 +1584,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         ddd = [f.degree() for f in Anew]
         res = [Anew[i]*((B[i]).integral()) for i in range(len(Anew))]
         dddd = [f.degree() for f in res]
-        res = [res[i].residue_at_zero() for i in range(len(res))]
+        res = [res[i].residue() for i in range(len(res))]
         S = K['x']
         f = S(self.hyperelliptic_polynomials()[0])
         degrees = [x[0].degree() for x in f.factor()]
@@ -1908,6 +1908,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                         ynew = ynew + [y]
                 pts = pts + [HJ(xs[i],ynew[i]) for i in range(len(xs))]
                 return pts
+
     def square_root_extension(self,num):
         """
         Takes a square root in a p-adic extension
@@ -2236,6 +2237,148 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             for j in range(len(w.list())):
                 sum = sum+ v[i]*w[j]*M[i,j]
         return sum
+
+    def height(self,divisor1,divisor2,prec=None, cggen=False):
+        """
+        The p-part of the Coleman-Gross height pairing of divisor1 and
+        divisor2/Users/jen
+
+        If self has ordinary reduction at self.base_ring().prime(), the height pairing
+        is symmetric.
+
+        GENUS 1 EXAMPLES
+
+        sage: R.<x> = QQ[]
+        sage: H = HyperellipticCurve(x*(x-1)*(x+9))
+        sage: K = Qp(7,10)
+        sage: HK = H.change_ring(K)
+        sage: P = HK(9,36)
+        sage: Q = HK.teichmuller(P)
+        sage: Pprime = HK(-4,10)
+        sage: Qprime = HK.teichmuller(Pprime)
+        sage: HK.height([(1,P),(-1,Q)],[(1,Pprime),(-1,Qprime)],10)
+        2*7^2 + 5*7^3 + 7^4 + 7^5 + 2*7^6 + 3*7^7 + 7^8 + 3*7^9 + O(7^10)
+        sage: HK.height([(1,Pprime),(-1,Qprime)],[(1,P),(-1,Q)],10)
+        2*7^2 + 5*7^3 + 7^4 + 7^5 + 2*7^6 + 3*7^7 + 7^8 + 3*7^9 + O(7^10)
+
+
+        sage: R.<x> = QQ[]
+        sage: H = HyperellipticCurve(x*(x-1)*(x+9))
+        sage: K = Qp(7,10)
+        sage: HK = H.change_ring(K)
+        sage: P = HK(-1,4)
+        sage: Q = HK(-1,-4)
+        sage: R = HK(-4,-10)
+        sage: S = HK(-4,10)
+        sage: Pprime = HK(25/16,195/64)
+        sage: Qprime = HK(25/16,-195/64)
+
+        Test that h_7(P-Q, R-S) + h_7(P-Q, S-Pprime) = h_7(P-Q,R-Pprime)
+
+        sage: HK.height([(1,P),(-1,Q)],[(1,R),(-1,S)],9)
+        6*7 + 5*7^2 + 2*7^3 + 4*7^4 + 7^5 + 3*7^6 + 7^7 + 4*7^9 + O(7^10)
+        sage: HK.height([(1,P),(-1,Q)],[(1,S),(-1,Pprime)],9)
+        4*7 + 2*7^2 + 3*7^3 + 6*7^4 + 5*7^5 + 4*7^6 + 6*7^7 + 2*7^8 + 5*7^9 + O(7^10)
+        sage: HK.height([(1,P),(-1,Q)],[(1,R),(-1,Pprime)],9)
+        3*7 + 7^2 + 6*7^3 + 3*7^4 + 7^6 + 7^7 + 3*7^8 + 2*7^9 + O(7^10)
+
+        sage: 6*7 + 5*7^2 + 2*7^3 + 4*7^4 + 7^5 + 3*7^6 + O(7^7)+4*7 + 2*7^2 + 3*7^3 + 6*7^4 + 5*7^5 + 4*7^6 + 6*7^7 + 2*7^8 + 5*7^9 + O(7^10)
+        3*7 + 7^2 + 6*7^3 + 3*7^4 + 7^6 + 7^7 + 3*7^8 + 2*7^9 + O(7^10)
+
+        Test that h_7(Pprime-P, R-S) = h_7(Q-Qprime, R-S), where (Pprime)-(P) ~ (Q)-(Qprime)
+
+        sage: HK.height([(1,Pprime),(-1,P)],[(1,R),(-1,S)],9)
+        3*7 + 7^3 + 7^4 + 7^5 + 2*7^6 + 2*7^7 + 7^8 + O(7^10)
+
+        sage: HK.height([(1,Q),(-1,Qprime)],[(1,R),(-1,S)],9)
+        3*7 + 7^3 + 7^4 + 7^5 + 2*7^6 + 2*7^7 + 7^8 + O(7^10)
+
+        GENUS 2 EXAMPLES
+        (with respect to W the unit root subspace)
+
+        sage: R.<x> = PolynomialRing(pAdicField(11,10))
+        sage: H = HyperellipticCurve(x^5-23*x^3+18*x^2+40*x)
+        sage: P = H(-4,24)
+        sage: Pprime = H.teichmuller(P)
+        sage: Q = H(5,30)
+        sage: Qprime = H.teichmuller(Q)
+        sage: H.height([(1,Q),(-1,Qprime)],[(1,P),(-1,Pprime)],10)
+        6*11^2 + 9*11^3 + 4*11^4 + 2*11^5 + 6*11^6 + 4*11^7 + 6*11^8 + 11^9 + O(11^10)
+        sage: H.height([(1,P),(-1,Pprime)],[(1,Q),(-1,Qprime)],10)
+        6*11^2 + 9*11^3 + 4*11^4 + 2*11^5 + 6*11^6 + 4*11^7 + 6*11^8 + 11^9 + O(11^10)
+
+        sage: R.<x> = PolynomialRing(pAdicField(11,10))
+        sage: H = HyperellipticCurve(x^5-23*x^3+18*x^2+40*x)
+        sage: P = H(-4,24)
+        sage: Pprime = H(-4,-24)
+        sage: Q = H(5,30)
+        sage: Qprime = H(5,-30)
+        sage: H.height([(1,P),(-1,Pprime)],[(1,Q),(-1,Qprime)],10)
+        6*11^-1 + 10 + 7*11 + 6*11^2 + 3*11^3 + 7*11^4 + 7*11^5 + 11^6 + O(11^8)
+        sage: H.height([(1,Q),(-1,Qprime)],[(1,P),(-1,Pprime)],10)
+        6*11^-1 + 10 + 7*11 + 6*11^2 + 3*11^3 + 7*11^4 + 7*11^5 + 11^6 + O(11^8)
+
+        sage: R.<x> = Qp(11,10)['x']
+        sage: H = HyperellipticCurve(x^5-23*x^3+18*x^2+40*x)
+        sage: P = H(-4,24)
+        sage: Q = H(5,30)
+        sage: R = H(1,6)
+        sage: S = H(-2,12)
+        sage: H.height([(1,P),(-1,Q)],[(1,R),(-1,S)],10)
+        7*11^-1 + 3 + 8*11 + 6*11^2 + 5*11^3 + 7*11^4 + 3*11^5 + 9*11^6 + 6*11^7 + O(11^8)
+        sage: H.height([(1,R),(-1,S)],[(1,P),(-1,Q)],10)
+        7*11^-1 + 3 + 8*11 + 6*11^2 + 5*11^3 + 7*11^4 + 3*11^5 + 9*11^6 + 6*11^7 + O(11^8)
+
+        """
+        if prec == None:
+            prec = self.base_ring().precision_cap()
+        P = divisor1[0][1]
+        Q = divisor1[1][1]
+        R = divisor2[0][1]
+        S = divisor2[1][1]
+        if P == R and Q == S == self(0,1,0):
+            negP = self(P[0],-P[1])
+            div1 = [(1,P),(-1,negP)]
+            int_eta = self.init_height(div1,div1,prec)
+            int_eta = self.eta_integral(div1,div1)
+            Q = self.find_Q(P)
+            negQ = self(Q[0],-Q[1])
+            int_omega_at_P = self.special_int_omega(P)
+            int_omega_P_to_Q = int_omega_at_P(Q[0]-P[0]) + log(Q[0]-P[0],0)
+            self.init_height([(1,P),(-1,negP)],[(1,Q),(-1,negQ)])
+            int_omega_wQ_to_Q = self.omega_integral([(1,P),(-1,negP)],[(1,Q),(-1,negQ)])
+            height_minus = -2*int_omega_P_to_Q + int_omega_wQ_to_Q - int_eta
+            b = P[1]
+            return 1/QQ(4)*log(4*b**2) + 1/QQ(4)*height_minus
+
+        else:
+            self.init_height(divisor1,divisor2,prec)
+            if (self.is_weierstrass(R) and self.is_weierstrass(S)):
+                eta = 0
+            else:
+                eta = self.eta_integral(divisor1,divisor2)
+            omega = self.omega_integral(divisor1,divisor2,prec,cggen)
+            return omega - eta
+
+    def neg_point(self,P):
+        return self(P[0],-P[1])
+
+    def is_ordinary(self):
+        """
+        determines if self.base_ring().prime() is a prime of ordinary reduction
+        """
+        import sage.schemes.hyperelliptic_curves.monsky_washnitzer as monsky_washnitzer
+        try:
+            M_frob, forms = self._frob_calc
+        except AttributeError:
+            M_frob, forms = self._frob_calc = monsky_washnitzer.matrix_of_frobenius_hyperelliptic(self)
+        g = self.genus()
+        f = M_frob.charpoly()
+        if f.list()[g].valuation() == 0:
+            return True
+        else:
+            return False
+
 
     def local_analytic_interpolation_cyclotomic(self,P,Q,prec=100):
         """
