@@ -1,26 +1,19 @@
 """
-Hyperelliptic curves over a `p`-adic field
+Hyperelliptic curves over a padic field.
 """
-
 #*****************************************************************************
-#       Copyright (C) 2007 Robert Bradshaw <robertwb@math.washington.edu>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 2 of the License, or
-# (at your option) any later version.
+#  Copyright (C) 2007 Robert Bradshaw <robertwb@math.washington.edu>
+#  Distributed under the terms of the GNU General Public License (GPL)
 #                  http://www.gnu.org/licenses/
 #*****************************************************************************
-
 from __future__ import absolute_import
 from six.moves import range
 
 from . import hyperelliptic_generic
 
-from sage.rings.all import (PowerSeriesRing, PolynomialRing, ZZ, QQ, O,
-                            pAdicField, GF, RR, RationalField, Infinity)
-from sage.functions.log import log
+from sage.rings.all import PowerSeriesRing, PolynomialRing, ZZ, QQ, O, pAdicField, GF, RR, RationalField, Infinity
 from sage.misc.functional import cyclotomic_polynomial
+from sage.functions.all import log
 from sage.modules.free_module import VectorSpace
 from sage.matrix.constructor import matrix, identity_matrix
 from sage.modules.all import vector
@@ -33,50 +26,43 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
 # Kiran Kedlaya
 # All of the below is with respect to the Monsky Washnitzer cohomology.
 
-    def local_analytic_interpolation(self, P, Q, prec=True):
+    def local_analytic_interpolation(self, P, Q, prec = None):
         """
-        For points `P`, `Q` in the same residue disc,
-        this constructs an interpolation from `P` to `Q`
-        (in homogeneous coordinates) in a power series in
-        the local parameter `t`, with precision equal to
-        the `p`-adic precision of the underlying ring.
+        For points $P$, $Q$ in the same residue disc,
+        this constructs an interpolation from $P$ to $Q$ (in homogeneous coordinates)
+        in a power series in the local parameter $t$, with precision equal
+        to the $p$-adic precision of the underlying ring.
+
 
         INPUT:
-
-        - P and Q points on self in the same residue disc
+            - P and Q points on self in the same residue disc
 
         OUTPUT:
+            Returns a point $X(t) = ( x(t) : y(t) : z(t) )$ such that
+            (1) $X(0) = P$ and $X(1) = Q$ if $P, Q$ are not in the infinite disc
+            (2) $X(P[0]^g}/P[1]) = P$ and $X(Q[0]^g/Q[1]) = Q$ if $P, Q$ are in the infinite disc
 
-        Returns a point `X(t) = ( x(t) : y(t) : z(t) )` such that:
-
-        (1) `X(0) = P` and `X(1) = Q` if `P, Q` are not in the infinite disc
-        (2) `X(P[0]^g/P[1]) = P` and `X(Q[0]^g/Q[1]) = Q` if `P, Q` are in the infinite disc
-
-        EXAMPLES::
-
+        EXAMPLES:
             sage: R.<x> = QQ['x']
             sage: H = HyperellipticCurve(x^3-10*x+9)
             sage: K = Qp(5,8)
             sage: HK = H.change_ring(K)
 
-        A non-Weierstrass disc::
-
+        A non-Weierstrass disc:
             sage: P = HK(0,3)
             sage: Q = HK(5, 3 + 3*5^2 + 2*5^3 + 3*5^4 + 2*5^5 + 2*5^6 + 3*5^7 + O(5^8))
             sage: x,y,z, = HK.local_analytic_interpolation(P,Q)
-            sage: x(0) == P[0], x(1) == Q[0], y(0) == P[1], y.polynomial()(1) == Q[1]
+            sage: x(0) == P[0], x(1) == Q[0], y(0) == P[1], y(1) == Q[1]
             (True, True, True, True)
 
-        A finite Weierstrass disc::
-
+        A finite Weierstrass disc
             sage: P = HK.lift_x(1 + 2*5^2)
             sage: Q = HK.lift_x(1 + 3*5^2)
             sage: x,y,z = HK.local_analytic_interpolation(P,Q)
-            sage: x(0) == P[0], x.polynomial()(1) == Q[0], y(0) == P[1], y(1) == Q[1]
+            sage: x(0) == P[0], x(1) == Q[0], y(0) == P[1], y(1) == Q[1]
             (True, True, True, True)
 
-        The infinite disc::
-
+        The infinite disc
             sage: P = HK.lift_x(5^-2)
             sage: Q = HK.lift_x(4*5^-2)
             sage: x,y,z = HK.local_analytic_interpolation(P,Q)
@@ -91,54 +77,40 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             sage: y(Q[0]/Q[1]) == Q[1]
             True
 
-        An error if points are not in the same disc::
-
+        An error if points are not in the same disc:
             sage: x,y,z = HK.local_analytic_interpolation(P,HK(1,0))
             Traceback (most recent call last):
             ...
             ValueError: (5^-2 + O(5^6) : 5^-3 + 4*5^2 + 5^3 + 3*5^4 + O(5^5) : 1 + O(5^8)) and (1 + O(5^8) : 0 : 1 + O(5^8)) are not in the same residue disc
 
-        TESTS:
-
-        Check that :trac:`26005` is fixed::
-
-            sage: L = Qp(5, 100)
-            sage: HL = H.change_ring(L)
-            sage: P = HL.lift_x(1 + 2*5^2)
-            sage: Q = HL.lift_x(1 + 3*5^2)
-            sage: x,y,z=HL.local_analytic_interpolation(P, Q)
-            sage: x.polynomial().degree()
-            98
-
         AUTHORS:
-
-        - Robert Bradshaw (2007-03)
-        - Jennifer Balakrishnan (2010-02)
+            - Robert Bradshaw (2007-03)
+            - Jennifer Balakrishnan (2010-02)
         """
-        if prec == True:
-            prec = self.base_ring().precision_cap()
-        if not self.is_same_disc(P,Q):
-            raise ValueError("%s and %s are not in the same residue disc"%(P,Q))
+        if prec == None:
+            prec = self.base_ring().precision_cap() + 2
+        if self.is_same_disc(P,Q) == False:
+            raise ValueError, "%s and %s are not in the same residue disk"%(P,Q)
         disc = self.residue_disc(P)
         t = PowerSeriesRing(self.base_ring(), 't', prec).gen(0)
-        if disc == self.change_ring(self.base_ring().residue_field())(0,1,0): # Infinite disc
+        if disc == self.change_ring(self.base_ring().residue_field())(0,1,0):
             x,y = self.local_coordinates_at_infinity(2*prec)
             g = self.genus()
             return (x*t**(2*g+1),y*t**(2*g+1),t**(2*g+1))
-        if disc[1] != 0: # non-Weierstrass disc
+        if disc[1] !=0:
             x = P[0]+t*(Q[0]-P[0])
             pts = self.lift_x(x, all=True)
             if pts[0][1][0] == P[1]:
                 return pts[0]
             else:
                 return pts[1]
-        else: # Weierstrass disc
+        else:
             S = self.find_char_zero_weier_point(P)
-            x,y = self.local_coord(S, prec)
+            x,y = self.local_coord(S)
             a = P[1]
             b = Q[1] - P[1]
             y = a + b*t
-            x = x.polynomial()(y).add_bigoh(x.prec())
+            x = x(y)
             return (x, y, 1)
 
     def weierstrass_points(self):
@@ -185,10 +157,9 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             True
 
         AUTHOR:
-
-        - Jennifer Balakrishnan (2010-02)
+           - Jennifer Balakrishnan (2010-02)
         """
-        if (P[1].valuation() == 0 and P != self(0,1,0)):
+        if P[1].valuation() == 0 and P != self(0,1,0):
             return False
         else:
             return True
@@ -218,9 +189,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             False
 
         AUTHOR:
-
-        - Jennifer Balakrishnan (2010-02)
-
+            - Jennifer Balakrishnan (2010-02)
         """
         if (P[1] == 0 or P[2] ==0):
             return True
@@ -252,8 +221,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             (0 : 1 + O(5^8) : 0)
 
         AUTHOR:
-
-        - Jennifer Balakrishnan
+            - Jennifer Balakrishnan
         """
         if not self.is_in_weierstrass_disc(Q):
             raise ValueError("%s is not in a Weierstrass disc"%Q)
@@ -286,25 +254,24 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             (0 : 1 : 0)
 
         AUTHOR:
-
-        - Jennifer Balakrishnan
+            - Jennifer Balakrishnan
         """
         xPv = P[0].valuation()
         yPv = P[1].valuation()
         F = self.base_ring().residue_field()
         HF = self.change_ring(F)
-        if P == self(0,1,0):
+        if len(P) == 3 and P[2] == 0:
             return HF(0,1,0)
         elif yPv > 0:
             if xPv > 0:
                 return HF(0,0,1)
             if xPv == 0:
-                return HF(P[0].expansion(0), 0,1)
+                return HF(P[0].list()[0], 0,1)
         elif yPv ==0:
             if xPv > 0:
-                return HF(0, P[1].expansion(0),1)
+                return HF(0, P[1].list()[0],1)
             if xPv == 0:
-                return HF(P[0].expansion(0), P[1].expansion(0),1)
+                return HF(P[0].list()[0], P[1].list()[0],1)
         else:
             return HF(0,1,0)
 
@@ -442,12 +409,18 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             ValueError: (11^-2 + O(11^3) : 11^-5 + 8*11^-2 + O(11^0) : 1 + O(11^5)) and (0 : 3 + 8*11 + 2*11^2 + 8*11^3 + 2*11^4 + O(11^5) : 1 + O(11^5)) are not in the same residue disc
 
         """
+        d = self.hyperelliptic_polynomials()[0].degree()
+        g = self.genus()
+        if d%2 == 1:
+            dim = 2*g
+        else:
+            dim = 2*g+1
         if P == Q:
-            V = VectorSpace(self.base_ring(), 2*self.genus())
+            V = VectorSpace(self.base_ring(), dim)
             return V(0)
         R = PolynomialRing(self.base_ring(), ['x', 'y'])
         x, y = R.gens()
-        return self.tiny_integrals([x**i for i in range(2*self.genus())], P, Q)
+        return self.tiny_integrals([x**i for i in range(dim)], P, Q)
 
     def teichmuller(self, P):
         r"""
@@ -474,6 +447,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         K = P[0].parent()
         x = K.teichmuller(P[0])
         pts = self.lift_x(x, all=True)
+        p = K.prime()
         if (pts[0][1] - P[1]).valuation() > 0:
             return pts[0]
         else:
@@ -553,9 +527,8 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             (0, 0)
 
         AUTHORS:
-
-        - Robert Bradshaw (2007-03): non-Weierstrass points
-        - Jennifer Balakrishnan and Robert Bradshaw (2010-02): Weierstrass points
+            - Robert Bradshaw (2007-03): non-Weierstrass points
+            - Jennifer Balakrishnan and Robert Bradshaw (2010-02): Weierstrass points
         """
         import sage.schemes.hyperelliptic_curves.monsky_washnitzer as monsky_washnitzer
         from sage.misc.profiler import Profiler
@@ -565,17 +538,44 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         p = K.prime()
         prec = K.precision_cap()
         g = self.genus()
-        dim = 2*g
+        d = self.hyperelliptic_polynomials()[0].degree()
+        if d%2 == 1:
+            dim = 2*g
+        else:
+            dim = 2*g+1
         V = VectorSpace(K, dim)
         #if P or Q is Weierstrass, use the Frobenius algorithm
+        if self.is_in_weierstrass_disc(Q):
+            if self.is_weierstrass(P) == False and self.is_in_weierstrass_disc(P) == False:
+                W = self.find_char_zero_weier_point(Q)
+                I1 = -self.coleman_integrals_on_basis(W,P)
+                I2 = self.tiny_integrals_on_basis(W,Q)
+                return I1 + I2
         if self.is_weierstrass(P):
             if self.is_weierstrass(Q):
                 return V(0)
+            elif self.is_in_weierstrass_disc(Q):
+                W = self.find_char_zero_weier_point(Q)
+                return self.tiny_integrals_on_basis(W,Q)
+            elif self.is_same_disc(P,Q):
+                return self.tiny_integrals_on_basis(P,Q)
             else:
                 PP = None
                 QQ = Q
                 TP = None
-                TQ = self.frobenius(Q)
+                try:
+                    TQ = self.frobenius(Q)
+                except (TypeError,AttributeError):
+                    xFQ = Q[0]**p
+                    f = self.hyperelliptic_polynomials()[0]
+                    y = f(xFQ)
+                    yval = y.valuation()//ZZ(2)
+                    yFQ = Q[0].parent().gen()**yval
+                    for i in range(15):
+                        yFQ = (yFQ + y/yFQ)
+                    if yFQ.list()[0] != 1:
+                        yFQ = -yFQ
+                    TQ = (xFQ,yFQ)
         elif self.is_weierstrass(Q):
             PP = P
             QQ = None
@@ -587,48 +587,20 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             prof("teichmuller")
             PP = TP = self.teichmuller(P)
             QQ = TQ = self.teichmuller(Q)
+            evalP, evalQ = TP, TQ
         else:
             prof("frobPQ")
             TP = self.frobenius(P)
             TQ = self.frobenius(Q)
             PP, QQ = P, Q
         prof("tiny integrals")
-        if TP is None:
+        if TP == None:
             P_to_TP = V(0)
         else:
-            if TP is not None:
-                TPv = (TP[0]**g/TP[1]).valuation()
-                xTPv = TP[0].valuation()
-            else:
-                xTPv = TPv = +Infinity
-            if TQ is not None:
-                TQv = (TQ[0]**g/TQ[1]).valuation()
-                xTQv = TQ[0].valuation()
-            else:
-                xTQv = TQv = +Infinity
-            offset = (2*g-1)*max(TPv, TQv)
-            if offset == +Infinity:
-                offset = (2*g-1)*min(TPv,TQv)
-            if (offset > prec and (xTPv <0 or xTQv <0) and (self.residue_disc(P) == self.change_ring(GF(p))(0,1,0) or self.residue_disc(Q) == self.change_ring(GF(p))(0,1,0))):
-                newprec = offset + prec
-                K = pAdicField(p,newprec)
-                A = PolynomialRing(RationalField(),'x')
-                f = A(self.hyperelliptic_polynomials()[0])
-                from sage.schemes.hyperelliptic_curves.constructor import HyperellipticCurve
-                self = HyperellipticCurve(f).change_ring(K)
-                xP = P[0]
-                xPv = xP.valuation()
-                xPnew = K(sum(c * p**(xPv + i) for i, c in enumerate(xP.expansion())))
-                PP = P = self.lift_x(xPnew)
-                TP = self.frobenius(P)
-                xQ = Q[0]
-                xQv = xQ.valuation()
-                xQnew = K(sum(c * p**(xQv + i) for i, c in enumerate(xQ.expansion())))
-                QQ = Q = self.lift_x(xQnew)
-                TQ = self.frobenius(Q)
-                V = VectorSpace(K,dim)
-            P_to_TP = V(self.tiny_integrals_on_basis(P, TP))
-        if TQ is None:
+            P_to_TP = (self.tiny_integrals_on_basis(P, TP))
+        V = VectorSpace(P[0].parent(),dim)
+        P_to_TP = V(P_to_TP)
+        if TQ == None:
             TQ_to_Q = V(0)
         else:
             TQ_to_Q = V(self.tiny_integrals_on_basis(TQ, Q))
@@ -638,27 +610,32 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         except AttributeError:
             M_frob, forms = self._frob_calc = monsky_washnitzer.matrix_of_frobenius_hyperelliptic(self)
         prof("eval f")
-        R = forms[0].base_ring()
+#        R = forms[0].base_ring()
+        R = (P[0]).parent()
         try:
-            prof("eval f %s" % R)
+            prof("eval f %s"%R)
             if PP is None:
-                L = [-ff(R(QQ[0]), R(QQ[1])) for ff in forms]  ##changed
+                L = [-f(R(QQ[0]), R(QQ[1])) for f in forms]  ##changed
             elif QQ is None:
-                L = [ff(R(PP[0]), R(PP[1])) for ff in forms]
+                L = [f(R(PP[0]), R(PP[1])) for f in forms]
             else:
-                L = [ff(R(PP[0]), R(PP[1])) - ff(R(QQ[0]), R(QQ[1]))
-                     for ff in forms]
+                L = [f(R(PP[0]), R(PP[1])) - f(R(QQ[0]), R(QQ[1])) for f in forms]
         except ValueError:
+            R = (Q[0]).parent()
             prof("changing rings")
-            forms = [ff.change_ring(self.base_ring()) for ff in forms]
-            prof("eval f %s" % self.base_ring())
+            forms = [f.change_ring(self.base_ring()) for f in forms]
+            prof("eval f %s"%self.base_ring())
             if PP is None:
-                L = [-ff(QQ[0], QQ[1]) for ff in forms]  ##changed
+                L = [-f(QQ[0], QQ[1]) for f in forms]  ##changed
             elif QQ is None:
-                L = [ff(PP[0], PP[1]) for ff in forms]
+                L = [f(PP[0], PP[1]) for f in forms]
             else:
-                L = [ff(PP[0], PP[1]) - ff(QQ[0], QQ[1]) for ff in forms]
-        b = V(L)
+                L = [f(PP[0], PP[1]) - f(QQ[0], QQ[1]) for f in forms]
+        try:
+            b = V(L)
+        except ValueError:
+            V = VectorSpace(Q[0].parent(),dim)
+            b = V(L)
         if PP is None:
             b -= TQ_to_Q
         elif QQ is None:
@@ -675,34 +652,6 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             return TP_to_TQ
 
     coleman_integrals_on_basis_hyperelliptic = coleman_integrals_on_basis
-
-
-#    def invariant_differential(self):
-#        """
-#        Returns the invariant differential `dx/2y` on self
-#
-#        EXAMPLES::
-#
-#            sage: R.<x> = QQ['x']
-#            sage: H = HyperellipticCurve(x^3+1)
-#            sage: K = Qp(5,8)
-#            sage: HK = H.change_ring(K)
-#            sage: w = HK.invariant_differential(); w
-#            (((1+O(5^8)))*1) dx/2y
-#
-#        ::
-#
-#            sage: K = pAdicField(11, 6)
-#            sage: x = polygen(K)
-#            sage: C = HyperellipticCurve(x^5 + 33/16*x^4 + 3/4*x^3 + 3/8*x^2 - 1/4*x + 1/16)
-#            sage: C.invariant_differential()
-#            (((1+O(11^6)))*1) dx/2y
-#
-#        """
-#        import sage.schemes.hyperelliptic_curves.monsky_washnitzer as monsky_washnitzer
-#        S = monsky_washnitzer.SpecialHyperellipticQuotientRing(self)
-#        MW = monsky_washnitzer.MonskyWashnitzerDifferentialRing(S)
-#        return MW.invariant_differential()
 
     def coleman_integral(self, w, P, Q, algorithm = 'None'):
         r"""
@@ -844,13 +793,9 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         - Jennifer Balakrishnan (2010-02)
 
         """
-        # TODO: implement Jacobians and show the relationship directly
         import sage.schemes.hyperelliptic_curves.monsky_washnitzer as monsky_washnitzer
         K = self.base_ring()
         prec = K.precision_cap()
-        S = monsky_washnitzer.SpecialHyperellipticQuotientRing(self, K)
-        MW = monsky_washnitzer.MonskyWashnitzerDifferentialRing(S)
-        w = MW(w)
         f, vec = w.reduce_fast()
         basis_values = self.coleman_integrals_on_basis(P, Q, algorithm)
         dim = len(basis_values)
@@ -946,7 +891,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                 except (TypeError, NotImplementedError):
                     uN2 = 1 + h(x0)/y0**(2*p)
                     #yfrob2 = f(x)
-                    c = uN2.expansion(0)
+                    c = uN2.list()[0]
                     v = uN2.valuation()
                     a = uN2.parent().gen()
                     uN = self.newton_sqrt(uN2,c.sqrt()*a**(v//2),K.precision_cap())
@@ -966,7 +911,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         else:
             return _frob(P)
 
-    def newton_sqrt(self, f, x0, prec):
+    def newton_sqrt(self,f,x0, prec):
         r"""
         Takes the square root of the power series `f` by Newton's method
 
@@ -976,11 +921,13 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
 
         INPUT:
 
-        - ``f`` -- power series with coefficients in `\QQ_p` or an extension
-        - ``x0`` -- seeds the Newton iteration
-        - ``prec`` -- precision
+        - f power series wtih coefficients in `\QQ_p` or an extension
+        - x0 seeds the Newton iteration
+        - prec precision
 
-        OUTPUT: the square root of `f`
+        OUTPUT:
+
+        the square root of `f`
 
         EXAMPLES::
 
@@ -1001,12 +948,24 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         AUTHOR:
 
         - Jennifer Balakrishnan
+
         """
+        z = x0
+        try:
+            x = f.parent().variable_name()
+            if x!='a' :  #this is to distinguish between extensions of Qp that are finite vs. not
+                S = f.base_ring()[[x]]
+                x = S.gen()
+        except ValueError:
+            pass
         z = x0
         loop_prec = (log(RR(prec))/log(RR(2))).ceil()
         for i in range(loop_prec):
-            z = (z + f/z) / 2
-        return z
+            z = (z+f/z)/2
+        try:
+            return z + O(x**prec)
+        except (NameError,ArithmeticError,TypeError):
+            return z
 
     def curve_over_ram_extn(self,deg):
         r"""
@@ -1028,7 +987,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             sage: HK = H.change_ring(K)
             sage: HL = HK.curve_over_ram_extn(2)
             sage: HL
-            Hyperelliptic Curve over 11-adic Eisenstein Extension Field in a defined by x^2 - 11 defined by (1 + O(a^10))*y^2 = (1 + O(a^10))*x^5 + (10 + 8*a^2 + 10*a^4 + 10*a^6 + 10*a^8 + O(a^10))*x^3 + (7 + a^2 + O(a^10))*x^2 + (7 + 3*a^2 + O(a^10))*x
+            Hyperelliptic Curve over Eisenstein Extension in a defined by x^2 - 11 with capped relative precision 10 over 11-adic Field defined by (1 + O(a^10))*y^2 = (1 + O(a^10))*x^5 + (10 + 8*a^2 + 10*a^4 + 10*a^6 + 10*a^8 + O(a^10))*x^3 + (7 + a^2 + O(a^10))*x^2 + (7 + 3*a^2 + O(a^10))*x
 
         AUTHOR:
 
@@ -1164,8 +1123,9 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         """
         prec = self.base_ring().precision_cap()
         deg = S[0].parent().defining_polynomial().degree()
-        prec2 = prec * deg
+        prec2= prec*deg
         x,y = self.local_coord(P,prec2)
+        g = self.genus()
         int_sing = (w.coeff()(x,y)*x.derivative()/(2*y)).integral()
         int_sing_a = int_sing(S[1])
         return int_sing_a
@@ -1234,7 +1194,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         if S == FS:
             S_to_FS = V(dim*[0])
         else:
-            P = self(ZZ(FS[0].expansion(0)),ZZ(FS[1].expansion(0)))
+            P = self(ZZ(FS[0][0]),ZZ(FS[1][0]))
             x,y = self.local_coord(P,prec2)
             integrals = [(x**i*x.derivative()/(2*y)).integral() for i in range(dim)]
             S_to_FS = vector([I.polynomial()(FS[1]) - I.polynomial()(S[1]) for I in integrals])
@@ -1250,15 +1210,15 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         b = V(L)
         M_sys = matrix(K, M_frob).transpose() - 1
         B = (~M_sys)
-        v = [c.valuation() for c in B.list()]
-        vv = min(v)
+        v = [B.list()[i].valuation() for i in range(len(B.list()))]
+        vv= min(v)
         B = (p**(-vv)*B).change_ring(K)
         B = p**(vv)*B
         return B*(b-S_to_FS-FQ_to_Q)
 
     def coleman_integral_S_to_Q(self,w,S,Q):
         r"""
-        Compute the Coleman integral `\int_S^Q w`
+        Computes the Coleman integral `\int_S^Q w`
 
         **one should be able to feed `S,Q` into coleman_integral,
         but currently that segfaults**
@@ -1299,9 +1259,6 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         """
         import sage.schemes.hyperelliptic_curves.monsky_washnitzer as monsky_washnitzer
         K = self.base_ring()
-        R = monsky_washnitzer.SpecialHyperellipticQuotientRing(self, K)
-        MW = monsky_washnitzer.MonskyWashnitzerDifferentialRing(R)
-        w = MW(w)
         f, vec = w.reduce_fast()
         g = self.genus()
         const = f(Q[0],Q[1])-f(S[0],S[1])
@@ -1360,6 +1317,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         S_to_Q = HJ.coleman_integral_S_to_Q(w,S,Q)
         return P_to_S + S_to_Q
 
+
     def init_height(self,divisor1,divisor2,prec=20,cggen=False):
         """
         Initializes and caches certain quantities for p-adic local height computation
@@ -1409,7 +1367,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         $\{\sum_P <w,w_i>_P\}_{i=0,...,2g}$, where the sum is taken over all
         points $P$ in the divisor as well as all weierstrass points.
 
-        NOTE: Assumes that divisor is of the form (P)-(Q)
+        NOTE: Assumes tha t divisor is of the form (P)-(Q)
 
         AUTHOR:
             -- Jennifer Balakrishnan (2007-12)
@@ -1431,7 +1389,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         This is Psi(w)
 
         if g = 1, W is spanned by x^(g+1) dx/y, ... x^(2g-1) dx/y
-        else W is unit root subspace, given by Frob^n (x^(g+1) dx/y), ..., Frob^n (x^(2g-1) dx/y)
+        else W is unit root subspace, given by Frob^n (x^g dx/y), ..., Frob^n (x^(2g-1) dx/y)
         EXAMPLES:
             sage: K = pAdicField(11,5)
             sage: R.<x> = PolynomialRing(K)
@@ -1495,6 +1453,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                 R_to_FR = (self.diff(divisor1,x,y,tiny=True)).integral()
                 R_to_FR = R_to_FR.truncate(R_to_FR.degree()+1)
                 R_to_FR = R_to_FR(1)
+                print("R_to_FR:", R_to_FR)
             #this is the case of beta having residue divisor "Q - wQ" in the notation of our paper
             elif P[0] == Q[0] and P[1] == -Q[1]:
             #changing P to R, P' to FR, Q to P (in our paper)
@@ -1534,7 +1493,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             elif P[0] == Q[0] and P[1] == -Q[1] and S[0] == R[0] and S[1] == -R[1]:
                 FS_to_S = R_to_FR
             else:
-                print(S, FS, P, Q)
+                print S, FS, P, Q
         else:
             FS_to_S = 0
         res = self.res(divisor1,divisor2,prec)
@@ -1615,7 +1574,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                     b = J.gen()
                     HJ = self.change_ring(J)
                     newr = self._newr = [HJ(b,0)]
-                elif (degrees == [1,4] or degrees == [1,1,3] or degrees == [1,1,1,2]):
+                elif (degrees == [1,4] or degrees == [1,1,3] or degrees == [1,1,1,3] or degrees == [1,1,1,2]):
                     S = K[[f.parent().variable_name()]]
                     x = S.gen()
                     oldprod=1
@@ -1627,7 +1586,6 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                     newr = self._newr = [HJ(b,0)]
                 elif degrees == [1,2,2]:
                     pols = f.factor()
-                    #print
                     J = K.extension(pols[1][0],names='b')
                     b = J.gen()
                     L = K.extension(pols[2][0],names='c')
@@ -1732,6 +1690,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                 newdiff = self.diff(divisor1, x, y)
                 newbeta = self.diff(divisor2, x, y)
                 newalpha = newfrob - p*newdiff
+                #fixed indent below 8/27/19
                 try:
                     newres = newres + [(newalpha*newbeta.integral()).residue().trace()]
                 except AttributeError:
@@ -1825,7 +1784,8 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         ###working over the appropriate field
         R = QQ['x']
         x = R.gen()
-        self._sanity = sanity = None
+        #replace self._sanity by P._sanity
+        P._sanity = sanity = None
         if xP**p==xP:
             f = cyclotomic_polynomial(p,var='y')
             J = K.extension(f(x+1),names='a')
@@ -1840,7 +1800,6 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                     try:
                         rootshere = (x**p - xP).roots()
                     except :
-                        #do hensel lifting
                         gg = x**p - xP
                         rootsmodp = GF(p)['x'](gg).roots()
                         xi = ZZ(rootsmodp[0][0])
@@ -1859,12 +1818,13 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                             try:
                                 J = K.extension(newg(x+i), names='a')
                                 sanity = i
-                                self._sanity = sanity
-                                self._extrart = rootshere[0][0]
+                                #replace self._sanity and self._extrart by P._sanity and P._extrart
+                                P._sanity = sanity
+                                P._extrart = rootshere[0][0]
                             except (NameError,ValueError,NotImplementedError):
                                 pass
                     else:
-                        print("Sorry! Extension failed!")
+                        print "Sorry! Extension failed!"
         a = J.gen()
         HJ = self.change_ring(J)
 
@@ -1884,8 +1844,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             xnew = (a+xP)*Pfracpow[0]
             ynew = HJ.square_root_extension(g(xnew))
             Pfracpow = HJ(xnew,ynew)
-        if list((Pfracpow[1]).expansion())[0] == list((P[1]).expansion())[0]:
-        #if ((Pfracpow[1]).list()[0] == (P[1]).list()[0]):
+        if ((Pfracpow[1]).list()[0] == (P[1]).list()[0]):
             point =  Pfracpow
         else:
             point = HJ(Pfracpow[0],-Pfracpow[1])
@@ -1901,8 +1860,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                 ys = [HJ.square_root_extension(g(x)) for x in xs]
                 ynew = []
                 for y in ys:
-                    if list(y.expansion())[0] != list((P[1]).expansion())[0] :
-                    #if y.list()[0] != (P[1]).list()[0] :
+                    if y.list()[0] != (P[1]).list()[0] :
                         ynew = ynew + [-y]
                     else:
                         ynew = ynew + [y]
@@ -1915,7 +1873,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         """
         p = self.base_ring().prime()
         if num.valuation() == 0:
-            c = list(num.expansion())[0]
+            c = num.list()[0]
             i = 1
             while i <p//2:
                 if (i**2)%p == c:
@@ -2086,11 +2044,13 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                 int_betaP_part = int_betaP_part.truncate(int_betaP_part.degree()+1)
                 log1 = log(pth_roots[0][0] - xcoord , 0)
                 log2 = log(P[0] - xcoord,0)
-                if self._sanity == None:
+                if P._sanity == None:
                     I1 = int_betaP_part(1) + (log1 - log2)
                 else:
-                #the sanity business is this problem that we encountered for x^7 - 48, where one root was over Qp...
-                    rt = self.lift_x(self._extrart)
+                    #the sanity business is this problem that we encountered for x^7 - 48, where one root was over Qp...
+                    #JSB 10/19/20: this should be fixed since potentially x^p - x(P) could have many roots over Qp
+                    print("is the bug about pth roots of : ", P[0])
+                    rt = self.lift_x(P._extrart)
                     if self.is_same_disc(rt,P) == False:
                         rt = self(rt[0],-rt[1])
                     x,y,z = self.local_analytic_interpolation(P,rt)
@@ -2104,13 +2064,13 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                 int_betaP = int_betaP.truncate(int_betaP.degree()+1)
                 I1 = int_betaP(1)-int_betaP(0)
             if I1 != 0:
-                if self._sanity == None:
+                if P._sanity == None:
                     I1 = I1.trace()
                 else:
                     try:
                         I1 = I1.trace() + (betaP_P_rt.integral())(1) + log3 - log4
                     except UnboundLocalError:
-                        rt = self.lift_x(self._extrart)
+                        rt = self.lift_x(P._extrart)
                         if self.is_same_disc(rt,P) == False:
                             rt = self(rt[0],-rt[1])
                         if self.is_same_disc(rt,P) == False:
@@ -2154,7 +2114,17 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
 
                     log1 = log(pth_roots[1][0] - xcoord,0)
                     log2 = log(Q[0] - xcoord, 0)
-                    I2 = int_betaQ_part(1) - (log1 - log2)
+                    if Q._sanity == None:
+                        I2 = int_betaQ_part(1).trace() - (log1 - log2).trace()   #7/12/19 is sign in front of (log1 correct?
+                    else:
+                        rt = self.lift_x(Q._extrart)
+                        if self.is_same_disc(rt,Q) == False:
+                            rt = self(rt[0],-rt[1])
+                        x,y,z = self.local_analytic_interpolation(Q,rt)
+                        betaQbonus = self.diff(divisor2,x,y,True,True)
+                        intbetaQbonus = betaQbonus.integral()
+                        intbetaQbonus = intbetaQbonus.truncate(intbetaQbonus.degree()+1)
+                        I2 = int_betaQ_part(1).trace() - (log1 - log2).trace() + intbetaQbonus(1) #same ? about sign
                 elif self.is_same_disc(Q,divisor2[0][1]):
                     print('We need to do this case')
                 else:
@@ -2162,13 +2132,60 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                     int_betaQ = (betaQ).integral()
                     int_betaQ = int_betaQ.truncate(int_betaQ.degree()+1)
                     I2 = int_betaQ(1)-int_betaQ(0)
+                    I2 = I2.trace()
+                    if Q._sanity != None:
+                        rt = self.lift_x(Q._extrart)
+                        if self.is_same_disc(rt,Q) == False:
+                            rt = self(rt[0],-rt[1])
+                        x,y,z = self.local_analytic_interpolation(Q,rt)
+                        betaQbonus = self.diff(divisor2,x,y,True,True)
+                        intbetaQbonus = betaQbonus.integral()
+                        intbetaQbonus = intbetaQbonus.truncate(intbetaQbonus.degree()+1)
+                        I2 = I2 + intbetaQbonus(1)
             else:
                 I2 = 0
             if I2 != 0:
-                I2 = I2.trace()
+                #I2 = I2.trace() #changed 7/12/19 to have the traces done earlier
                 return I1 - I2
             else:
                 return I1
+
+    def frob_diff_nw(self,divisor,x,y,prec=20):
+        """
+        ###needs to be fixed to account for negative discs
+        Action of Frobenius on differential for nonweierstrass point (x,y are local coordinates of that point)
+
+
+        """
+        p = self.base_ring().prime()
+        P = divisor[0][1]
+        Q = divisor[1][1]
+        a,b,nn = P
+        c,d,nn = Q
+        if (a==c and b==-d):
+            return p*b*x**(p-1)*x.derivative()*self.recip_froby(x,y,prec)/(x**p-a)
+        phiy = self.froby(x,y,prec)
+        forP = (phiy+b)/(x**p-a)
+        forQ = (phiy+d)/(x**p-c)
+        return (p/2)*x**(p-1)*x.derivative()*self.recip_froby(x,y,prec)*(forP - forQ)
+
+    def recip_froby(self,x,y,prec=10):
+        """
+        Given local expansions x(t) and y(t), computes the reciprocal of the Frobenius of y
+        """
+        f = self.hyperelliptic_polynomials()[0]
+        p = self.base_ring().prime()
+        s = 1+sum(self.Bm(i)*( (f(x**p)-f(x)**p)/(f(x)**p))**i for i in range(1,prec))
+        return y**(-p)*s
+
+    def froby(self,x,y,prec=10):
+        """
+        Given local expansions x(t) and y(t), computes the Frobenius of y
+        """
+        f = self.hyperelliptic_polynomials()[0]
+        p = self.base_ring().prime()
+        s = 1+sum(self.Bp(i)*( (f(x**p)-f(x)**p)/(f(x)**p))**i for i in range(1,prec))
+        return y**p*s
 
     def psiA_cup_psiB(self,divisor1,divisor2,prec=5):
         """
@@ -2238,10 +2255,115 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                 sum = sum+ v[i]*w[j]*M[i,j]
         return sum
 
+    def local_analytic_interpolation_cyclotomic(self,P,Q,prec=100):
+        """
+        Given P and x(Q), with P,Q
+        in the same residue disc and P defined over Qp,
+        this computes the local analytic interpolation
+        between P,Q
+
+        USE: for non-weierstrass points
+        """
+        R = Q.parent()[['t']]
+        t = R.gen()
+        R.set_default_prec(prec)
+        x,y = self.local_coord(P,prec)      
+        X = (x(R((Q-P[0])*t)))
+        Y = (y(R((Q-P[0])*t)))
+        return X,Y
+
+    def sum_of_local_symbols_extension(self,divisor,P,Q,extension=False, prec=200):
+        """
+        Computes the vector of local symbols (<w,w_i>_A)_{i=0...2g-1}, where w is a differential form with residue divisor "divisor"
+
+        if extension== True, creates the appropriate field extension and curve over that extension
+
+        P is fixed point for all computations to link constants of integration
+        Q is the residue disc where all the stuff should be happening
+
+        TODO: merge with sum_of_local_symbols, make more modular
+        """
+        p = self.base_ring().prime()
+        if Q[1] == 0:
+            wstrass = True
+        else:
+            wstrass = False
+        if extension==True:
+            A = self.find_pth_root_point(Q)
+        else:
+            A = Q
+        g = self.hyperelliptic_polynomials()[0]
+        gen = self.genus()
+
+        ###working over the appropriate field
+        cyc = False
+        if extension==True:
+            R = QQ['x']
+            x = R.gen()
+            if cyc==True:
+                f = cyclotomic_polynomial(p)
+                J = self.base_ring().extension(f(x+1),names='a')
+            else:
+                if Q[0]**p==Q[0]:
+                    f =((x+Q[0])**p-Q[0])
+                    d = f.degree()
+                    ff = sum(f.list()[i]*x**(i-1) for i in range(1,d+1))
+                    J = self.base_ring().extension(ff,names='a')
+                else:
+                    J = self.base_ring().extension((x+Q[0])**p-Q[0],names='a')
+            a = J.gen()
+            H = self.change_ring(J)
+        else:
+            H = self
+
+        x,y = H.local_coord(A,prec)     #worry about prec later
+        ###formal antiderivative of w_i
+        try:
+            I2 = vector(J,[0]*2*gen)
+        except UnboundLocalError:
+            R = QQ['x']
+            x = R.gen()
+            if cyc == True:
+                f = cyclotomic_polynomial(p)
+                J = self.base_ring().extension(f(x+1),names='a')
+            else:
+                if Q[0]**p==Q[0]:
+                    f =((x+Q[0])**p-Q[0])
+                    d = f.degree()
+                    ff = sum(f.list()[i]*x**(i-1) for i in range(1,d+1))
+                    J = self.base_ring().extension(ff,names='a')
+                else:
+                    J = self.base_ring().extension((x+Q[0])**p-Q[0],names='a')
+            I2 = vector(J,[0]*2*gen)
+        extension = True
+        ###if working over an extension, need tiny integral + coleman integral over Qp
+        if extension == True:
+            xx,yy = H.local_analytic_interpolation_cyclotomic(Q,A[0],prec) #this will change when it's weiestrass
+            Q_to_A = [(xx.derivative()*xx**i/(2*yy)).integral() for i in range(2*gen)] #changed 1210   ##changed 03/04
+            I = vector([f(1)-f(0) for f in Q_to_A])  #changed 1210
+
+            P = H(P[0],P[1])
+        ###plus a Coleman integral to offset the constant if P,A aren't in the same residue disc #this will change when it's weierstrass
+            xm,ym = self.monsky_washnitzer_gens()
+            omega = self.invariant_differential()
+
+            if ((P[0]).list()[0] != (A[0]).list()[0] or (P[1]).list()[0] != (A[1]).list()[0]):
+                I2= vector([self.coleman_integral(omega*xm**i,divisor[0][1],divisor[1][1]) for i in range(2*gen)])
+        else:
+            I = vector([self.coleman_integral(omega*xm**i,divisor[0][1],A) for i in range(2*gen)]) #weierstrass case
+        w  = self.frob_diff_nw(divisor,x,y,prec)
+        v = [(w*(I[n]+I2[n])) for n in range(2*gen)]
+        v = [f.residue_at_zero() for f in v]
+        try:
+            return vector([f.trace() for f in v])
+        except AttributeError:
+            return vector(self.base_ring(),v)
+
+
     def height(self,divisor1,divisor2,prec=None, cggen=False):
         """
         The p-part of the Coleman-Gross height pairing of divisor1 and
-        divisor2/Users/jen
+        divisor2
 
         If self has ordinary reduction at self.base_ring().prime(), the height pairing
         is symmetric.
