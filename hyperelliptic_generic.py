@@ -531,8 +531,11 @@ class HyperellipticCurve_generic(plane_curve.ProjectivePlaneCurve):
         AUTHOR:
             - Jennifer Balakrishnan (2007-12)
         """
-	#changed prec 08/18/21
-        prec = max(P[1].parent().base_ring().precision_cap(), prec)
+	#changed prec 08/18/21, 01/17/22
+        try:
+            prec = max(P[1].parent().base_ring().precision_cap(), prec)
+        except AttributeError:
+            pass
         if P[1] == 0:
             return self.local_coordinates_at_weierstrass(P, prec, name)
         elif P[2] == 0:
