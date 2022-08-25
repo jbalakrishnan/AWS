@@ -9,6 +9,6 @@ To compute double Coleman integrals and local p-adic heights on hyperelliptic cu
 * src/sage/schemes/hyperelliptic_curves/hyperelliptic_generic.py
 * src/sage/schemes/hyperelliptic_curves/hyperelliptic_padic_field.py
 
-Last updated on January 30, 2022
+Last updated on August 24, 2022
 
-Built on Sage 9.3
+Built on Sage 9.6
