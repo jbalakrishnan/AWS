@@ -1,25 +1,23 @@
 """
 Hyperelliptic curves over a `p`-adic field
 """
-#*****************************************************************************
+# ****************************************************************************
 #       Copyright (C) 2007 Robert Bradshaw <robertwb@math.washington.edu>
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 2 of the License, or
 # (at your option) any later version.
-#                  http://www.gnu.org/licenses/
-#*****************************************************************************
+#                  https://www.gnu.org/licenses/
+# ****************************************************************************
 
 
-from sage.rings.all import (PowerSeriesRing, PolynomialRing, ZZ, QQ, O,
+from sage.rings.all import (PowerSeriesRing, PolynomialRing, ZZ, QQ,
                             pAdicField, GF, RR, RationalField, Infinity)
-from sage.misc.functional import cyclotomic_polynomial
 from sage.functions.log import log
 from sage.modules.free_module import VectorSpace
-from sage.matrix.constructor import matrix, identity_matrix
-from sage.modules.all import vector
-from sage.functions.other import binomial
+from sage.matrix.constructor import matrix
+from sage.modules.free_module_element import vector
 
 from sage.schemes.curves.projective_curve import ProjectivePlaneCurve_field
 
@@ -29,12 +27,12 @@ from . import hyperelliptic_generic
 class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_generic,
                                      ProjectivePlaneCurve_field):
 
-# The functions below were prototyped at the 2007 Arizona Winter School by
-# Robert Bradshaw and Ralf Gerkmann, working with Miljan Brakovevic and
-# Kiran Kedlaya
-# All of the below is with respect to the Monsky Washnitzer cohomology.
+    # The functions below were prototyped at the 2007 Arizona Winter School by
+    # Robert Bradshaw and Ralf Gerkmann, working with Miljan Brakovevic and
+    # Kiran Kedlaya
+    # All of the below is with respect to the Monsky Washnitzer cohomology.
 
-    def local_analytic_interpolation(self, P, Q, prec=None):
+    def local_analytic_interpolation(self, P, Q):
         """
         For points `P`, `Q` in the same residue disc,
         this constructs an interpolation from `P` to `Q`
@@ -116,8 +114,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         - Robert Bradshaw (2007-03)
         - Jennifer Balakrishnan (2010-02)
         """
-        if prec == None:
-            prec = self.base_ring().precision_cap() + 2
+        prec = self.base_ring().precision_cap()
         if not self.is_same_disc(P,Q):
             raise ValueError("%s and %s are not in the same residue disc"%(P,Q))
         disc = self.residue_disc(P)
@@ -161,7 +158,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             raise NotImplementedError()
         return [self((0,1,0))] + [self((x, 0, 1)) for x in f.roots(multiplicities=False)]
 
-    def is_in_weierstrass_disc(self,P):
+    def is_in_weierstrass_disc(self, P):
         """
         Checks if `P` is in a Weierstrass disc
 
@@ -189,12 +186,9 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
 
         - Jennifer Balakrishnan (2010-02)
         """
-        if (P[1].valuation() == 0 and P != self(0,1,0)):
-            return False
-        else:
-            return True
+        return not (P[1].valuation() == 0 and P != self(0, 1, 0))
 
-    def is_weierstrass(self,P):
+    def is_weierstrass(self, P):
         """
         Checks if `P` is a Weierstrass point (i.e., fixed by the hyperelliptic involution)
 
@@ -221,12 +215,8 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         AUTHOR:
 
         - Jennifer Balakrishnan (2010-02)
-
         """
-        if (P[1] == 0 or P[2] ==0):
-            return True
-        else:
-            return False
+        return (P[1] == 0 or P[2] == 0)
 
     def find_char_zero_weier_point(self, Q):
         """
@@ -263,7 +253,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             if self.is_same_disc(P,Q):
                 return P
 
-    def residue_disc(self,P):
+    def residue_disc(self, P):
         """
         Gives the residue disc of `P`
 
@@ -309,7 +299,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         else:
             return HF(0,1,0)
 
-    def is_same_disc(self,P,Q):
+    def is_same_disc(self, P, Q):
         """
         Checks if `P,Q` are in same residue disc
 
@@ -329,10 +319,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             sage: HK.is_same_disc(Q,S)
             False
         """
-        if self.residue_disc(P) == self.residue_disc(Q):
-            return True
-        else:
-            return False
+        return self.residue_disc(P) == self.residue_disc(Q)
 
     def tiny_integrals(self, F, P, Q):
         r"""
@@ -490,8 +477,8 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         r"""
         Computes the Coleman integrals `\{\int_P^Q x^i dx/2y \}_{i=0}^{2g-1}`
 
-
         INPUT:
+
         - P point on self
         - Q point on self
         - algorithm (optional) = None (uses Frobenius) or teichmuller (uses Teichmuller points)
@@ -586,28 +573,14 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                 PP = None
                 QQ = Q
                 TP = None
-                if Q[1] %p != 0:
-                    TQ = self.frobenius(Q)
-                else:
-                    T = self.find_char_zero_weier_point(Q)
-                    return self.coleman_integrals_on_basis(P,T) + self.tiny_integrals_on_basis(T,Q)
+                TQ = self.frobenius(Q)
         elif self.is_weierstrass(Q):
             PP = P
             QQ = None
             TQ = None
-            if P[1] %p != 0:
-                TP = self.frobenius(P)
-            else:
-                T = self.find_char_zero_weier_point(P)
-                return self.tiny_integrals_on_basis(P,T) + self.coleman_integrals_on_basis(T,Q)
+            TP = self.frobenius(P)
         elif self.is_same_disc(P,Q):
             return self.tiny_integrals_on_basis(P,Q)
-        elif P[1] % p == 0:
-            T = self.find_char_zero_weier_point(P)
-            return self.tiny_integrals_on_basis(P,T) + self.coleman_integrals_on_basis(T,Q)
-        elif Q[1] % p == 0:
-            T = self.find_char_zero_weier_point(Q)
-            return self.coleman_integrals_on_basis(P,T) + self.tiny_integrals_on_basis(T,Q)
         elif algorithm == 'teichmuller':
             prof("teichmuller")
             PP = TP = self.teichmuller(P)
@@ -729,9 +702,9 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
 #        MW = monsky_washnitzer.MonskyWashnitzerDifferentialRing(S)
 #        return MW.invariant_differential()
 
-    def coleman_integral(self, w, P, Q, algorithm = 'None'):
+    def coleman_integral(self, w, P, Q, algorithm='None'):
         r"""
-        Returns the Coleman integral `\int_P^Q w`
+        Return the Coleman integral `\int_P^Q w`.
 
         INPUT:
 
@@ -1028,12 +1001,12 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         - Jennifer Balakrishnan
         """
         z = x0
-        loop_prec = (log(RR(prec))/log(RR(2))).ceil()
+        loop_prec = log(RR(prec), 2).ceil()
         for i in range(loop_prec):
-            z = (z + f/z) / 2
+            z = (z + f / z) / 2
         return z
 
-    def curve_over_ram_extn(self,deg):
+    def curve_over_ram_extn(self, deg):
         r"""
         Return ``self`` over `\QQ_p(p^(1/deg))`.
 
@@ -1150,7 +1123,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         val = [I(S[1]) for I in integrals]
         return vector(val)
 
-    def coleman_integral_P_to_S(self,w,P,S):
+    def coleman_integral_P_to_S(self, w, P, S):
         r"""
         Given a finite Weierstrass point `P` and a point `S`
         in the same disc, computes the Coleman integral `\int_P^S w`
@@ -1195,7 +1168,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         int_sing_a = int_sing(S[1])
         return int_sing_a
 
-    def S_to_Q(self,S,Q):
+    def S_to_Q(self, S, Q):
         r"""
         Given `S` a point on self over an extension field, computes the
         Coleman integrals `\{\int_S^Q x^i dx/2y \}_{i=0}^{2g-1}`
@@ -1275,13 +1248,12 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         b = V(L)
         M_sys = matrix(K, M_frob).transpose() - 1
         B = (~M_sys)
-        v = [c.valuation() for c in B.list()]
-        vv = min(v)
+        vv = min(c.valuation() for c in B.list())
         B = (p**(-vv)*B).change_ring(K)
         B = p**(vv)*B
         return B*(b-S_to_FS-FQ_to_Q)
 
-    def coleman_integral_S_to_Q(self,w,S,Q):
+    def coleman_integral_S_to_Q(self, w, S, Q):
         r"""
         Compute the Coleman integral `\int_S^Q w`
 
@@ -1320,7 +1292,6 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         AUTHOR:
 
         - Jennifer Balakrishnan
-
         """
         import sage.schemes.hyperelliptic_curves.monsky_washnitzer as monsky_washnitzer
         K = self.base_ring()
@@ -1377,12 +1348,11 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         AUTHOR:
 
         - Jennifer Balakrishnan
-
         """
         HJ = self.curve_over_ram_extn(d)
-        S = self.get_boundary_point(HJ,P)
-        P_to_S = self.coleman_integral_P_to_S(w,P,S)
-        S_to_Q = HJ.coleman_integral_S_to_Q(w,S,Q)
+        S = self.get_boundary_point(HJ, P)
+        P_to_S = self.coleman_integral_P_to_S(w, P, S)
+        S_to_Q = HJ.coleman_integral_S_to_Q(w, S, Q)
         return P_to_S + S_to_Q
 
     def init_height(self,divisor1,divisor2,prec=20,cggen=False):
