@@ -39,6 +39,7 @@ from sage.rings.laurent_series_ring import LaurentSeriesRing
 from sage.rings.real_mpfr import RR
 from sage.functions.all import log
 from sage.structure.category_object import normalize_names
+from sage.matrix.constructor import matrix
 
 import sage.schemes.curves.projective_curve as plane_curve
 

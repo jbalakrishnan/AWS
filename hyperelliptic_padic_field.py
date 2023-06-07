@@ -16,13 +16,15 @@ from sage.rings.all import (PowerSeriesRing, PolynomialRing, ZZ, QQ,
                             pAdicField, GF, RR, RationalField, Infinity)
 from sage.functions.log import log
 from sage.modules.free_module import VectorSpace
-from sage.matrix.constructor import matrix
+from sage.matrix.constructor import matrix, identity_matrix
 from sage.modules.free_module_element import vector
 
 from sage.schemes.curves.projective_curve import ProjectivePlaneCurve_field
+from sage.misc.functional import cyclotomic_polynomial
+from sage.functions.other import binomial
+
 
 from . import hyperelliptic_generic
-
 
 class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_generic,
                                      ProjectivePlaneCurve_field):
@@ -32,7 +34,7 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
     # Kiran Kedlaya
     # All of the below is with respect to the Monsky Washnitzer cohomology.
 
-    def local_analytic_interpolation(self, P, Q):
+    def local_analytic_interpolation(self, P, Q, prec=None):
         """
         For points `P`, `Q` in the same residue disc,
         this constructs an interpolation from `P` to `Q`
@@ -114,7 +116,8 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         - Robert Bradshaw (2007-03)
         - Jennifer Balakrishnan (2010-02)
         """
-        prec = self.base_ring().precision_cap()
+        if prec == None:
+            prec = self.base_ring().precision_cap() + 2
         if not self.is_same_disc(P,Q):
             raise ValueError("%s and %s are not in the same residue disc"%(P,Q))
         disc = self.residue_disc(P)
@@ -573,14 +576,28 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                 PP = None
                 QQ = Q
                 TP = None
-                TQ = self.frobenius(Q)
+                if Q[1] %p != 0:
+                    TQ = self.frobenius(Q)
+                else:
+                    T = self.find_char_zero_weier_point(Q)
+                    return self.coleman_integrals_on_basis(P,T) + self.tiny_integrals_on_basis(T,Q)
         elif self.is_weierstrass(Q):
             PP = P
             QQ = None
             TQ = None
-            TP = self.frobenius(P)
+            if P[1] %p != 0:
+                TP = self.frobenius(P)
+            else:
+                T = self.find_char_zero_weier_point(P)
+                return self.tiny_integrals_on_basis(P,T) + self.coleman_integrals_on_basis(T,Q)
         elif self.is_same_disc(P,Q):
             return self.tiny_integrals_on_basis(P,Q)
+        elif P[1] % p == 0:
+            T = self.find_char_zero_weier_point(P)
+            return self.tiny_integrals_on_basis(P,T) + self.coleman_integrals_on_basis(T,Q)
+        elif Q[1] % p == 0:
+            T = self.find_char_zero_weier_point(Q)
+            return self.coleman_integrals_on_basis(P,T) + self.tiny_integrals_on_basis(T,Q)
         elif algorithm == 'teichmuller':
             prof("teichmuller")
             PP = TP = self.teichmuller(P)
@@ -1583,8 +1600,8 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
             f = self.hyperelliptic_polynomials()[0]
             if g == 1:
                 if len(r) == 1:
-                    S = K[[f.parent().variable_name()]]
-                    S.set_default_prec(p+1)
+                    S = PowerSeriesRing(K, f.parent().variable_name(), default_prec=p+1)
+                    #S.set_default_prec(p+1)
                     x = S.gen()
                     oldprod = x - r[0][0]
                     newg = (S(f)/S(oldprod)).truncate(p)
@@ -1829,8 +1846,10 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
                         r = xi
                         rootshere = [(r,1)]
                     if len(rootshere) > 0:
-                        S = K[['x']]
-                        S.set_default_prec(p+1)
+                        #S = K[['x']]
+                        #S.set_default_prec(p+1)
+                        S = PowerSeriesRing(K, 'x', default_prec=p+1)
+                        x = S.gen()
                         newg = (S(x**p-xP)/(S(x-rootshere[0][0]))).truncate(p)
                         for i in range(p):
                             try:
@@ -2268,9 +2287,11 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         between P,Q
         USE: for non-weierstrass points
         """
-        R = Q.parent()[['t']]
+        #R = Q.parent()[['t']]
+        #t = R.gen()
+        #R.set_default_prec(prec)
+        R = PowerSeriesRing(Q.parent(), 't', default_prec = prec)
         t = R.gen()
-        R.set_default_prec(prec)
         x,y = self.local_coord(P,prec)
         X = (x(R((Q-P[0])*t)))
         Y = (y(R((Q-P[0])*t)))
@@ -2496,9 +2517,11 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         USE: for non-weierstrass points
         """
         #print "local_analytic_interpolation_cyclotomic", prec
-        R = Q.parent()[['t']]
+        #R = Q.parent()[['t']]
+        #t = R.gen()
+        #R.set_default_prec(prec)
+        R = PowerSeriesRing(Q.parent(), 't', default_prec = prec)
         t = R.gen()
-        R.set_default_prec(prec)
         x,y = self.local_coord(P,prec)      #figure out precision here
         X = (x(R((Q-P[0])*t)))
         Y = (y(R((Q-P[0])*t)))
@@ -2512,9 +2535,11 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         """
         prec = self.base_ring().precision_cap()
         x,y = self.local_coord(b,prec)
-        S = self.base_ring()[['z']]
+        #S = self.base_ring()[['z']]
+        #z = S.gen()
+        #S.set_default_prec(prec+10)
+        S = PowerSeriesRing(S, 'z', default_prec=prec+10)
         z = S.gen()
-        S.set_default_prec(prec+10)
         d = self.hyperelliptic_polynomials()[0].degree()
         return [((x**i)*x.derivative()/(2*y)).integral()(z) for i in range(d-1)]
 
@@ -2527,10 +2552,13 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         """
         prec = self.base_ring().precision_cap()
         x,y = self.local_coord(b,prec)
-        S = self.base_ring()[['z']]
+        #S = self.base_ring()[['z']]
         d = self.hyperelliptic_polynomials()[0].degree()
+        #z = S.gen()
+        #S.set_default_prec(prec+10)
+        S = PowerSeriesRing(S, 'z', prec+10)
         z = S.gen()
-        S.set_default_prec(prec+10)
+
         inner = self.tiny_integrals_on_basis_to_z(b)
         doubles = []
         for i in range(d-1):
@@ -2571,11 +2599,13 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         """
         import sage.schemes.hyperelliptic_curves.monsky_washnitzer as monsky_washnitzer
         K = self.base_ring()
-        S = PowerSeriesRing(K,names='z')
+        #S = PowerSeriesRing(K,names='z')
         prec = K.precision_cap()
         p = K.prime()
         prec = prec +10
-        S.set_default_prec(prec)
+        #S.set_default_prec(prec)
+        #z = S.gen()
+        S = PowerSeriesRing(K,'z',default_prec=prec)
         z = S.gen()
         d = self.hyperelliptic_polynomials()[0].degree()
         dim = d - 1
@@ -2612,9 +2642,11 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         if d == 0:
             raise TypeError("P  = %s is a Weierstrass point "%P)
         pol = self.hyperelliptic_polynomials()[0]
-        L = PowerSeriesRing((P[0]).parent(),name)
+        #L = PowerSeriesRing((P[0]).parent(),name)
+        #t = L.gen()
+        #L.set_default_prec(prec)
+        L = PowerSeriesRing((P[0]).parent(),name, default_prec=prec)
         t = L.gen()
-        L.set_default_prec(prec)
         K = PowerSeriesRing(L, 'x')
         pol = K(pol)
         x = K.gen()
@@ -2999,9 +3031,12 @@ class HyperellipticCurve_padic_field(hyperelliptic_generic.HyperellipticCurve_ge
         xi,yi = self.local_coordinates_at_infinity(prec)
         f = self.hyperelliptic_polynomials()[0]
         I2 = (xi**j*xi.derivative()/(2*yi)).integral()
-        S = K[['u']]
+        #S = K[['u']]
+        #u = S.gen()
+        #S.set_default_prec(prec)
+        S = PowerSeriesRing(K, 'u', default_prec=prec)
         u = S.gen()
-        S.set_default_prec(prec)
+
         g = self.genus()
         Pval = P[0]**g/P[1]
         Qval = Q[0]**g/Q[1]
